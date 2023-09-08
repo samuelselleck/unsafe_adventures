@@ -1,19 +1,40 @@
 //! Unsafe tree
 
-use std::{ptr, marker::PhantomData};
+use std::{marker::PhantomData, ptr};
 
 pub struct Tree<T> {
-    /// nullable
     root: *mut Node<T>,
 }
 
 struct Node<T> {
-    /// nullable
     parent: *mut Node<T>,
     value: T,
 
     left: *mut Node<T>,
     right: *mut Node<T>,
+}
+
+impl<T> Drop for Tree<T> {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.root.is_null() {
+                let _ = Box::from_raw(self.root);
+            }
+        }
+    }
+}
+
+impl<T> Drop for Node<T> {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.left.is_null() {
+                let _ = Box::from_raw(self.left);
+            }
+            if !self.right.is_null() {
+                let _ = Box::from_raw(self.right);
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -40,18 +61,27 @@ impl<T> Tree<T> {
         Self { root }
     }
 
-    pub fn branch(value: T, left: Self, right: Self) -> Self {
+    pub fn branch(value: T, mut left: Self, mut right: Self) -> Self {
+        let left = std::mem::replace(&mut left.root, std::ptr::null_mut());
+        let right = std::mem::replace(&mut right.root, std::ptr::null_mut());
         let root = Box::into_raw(Box::new(Node {
             parent: ptr::null_mut(),
             value,
-            left: left.root,
-            right: right.root,
+            left,
+            right,
         }));
+        unsafe {
+            (*left).parent = root;
+            (*right).parent = root;
+        }
         Self { root }
     }
 
-    pub fn root<'a>(&'a self) -> Cursor<'a, T> {
-        Cursor { ptr: self.root, lifetime: PhantomData }
+    pub fn root(&self) -> Cursor<'_, T> {
+        Cursor {
+            ptr: self.root,
+            lifetime: PhantomData,
+        }
     }
 }
 
@@ -84,13 +114,7 @@ impl<'a, T> Cursor<'a, T> {
     }
 
     pub fn get(self) -> Option<&'a T> {
-        unsafe {
-            if self.ptr.is_null() {
-                None
-            } else {
-                Some(&(*self.ptr).value)
-            }
-        }
+        unsafe { self.ptr.as_ref().map(|v| &v.value) }
     }
 }
 
@@ -122,7 +146,7 @@ mod tests {
             Tree::branch(8, Tree::leaf(7), Tree::leaf(9)),
         );
 
-        let eight = tree.root().right();
+        let eight = tree.root().right().parent().right();
         assert_eq!(*eight.left().get().unwrap(), 7);
         assert_eq!(*eight.right().get().unwrap(), 9);
     }

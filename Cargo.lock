@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "krc"
+name = "unsafe_adventures"
 version = "0.1.0"

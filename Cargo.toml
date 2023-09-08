@@ -1,5 +1,5 @@
 [package]
-name = "krc"
+name = "unsafe_adventures"
 version = "0.1.0"
 edition = "2021"
 
