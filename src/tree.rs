@@ -61,19 +61,19 @@ impl<T> Tree<T> {
         Self { root }
     }
 
-    pub fn branch(value: T, mut left: Self, mut right: Self) -> Self {
-        let left = std::mem::replace(&mut left.root, std::ptr::null_mut());
-        let right = std::mem::replace(&mut right.root, std::ptr::null_mut());
+    pub fn branch(value: T, left: Self, right: Self) -> Self {
         let root = Box::into_raw(Box::new(Node {
             parent: ptr::null_mut(),
             value,
-            left,
-            right,
+            left: left.root,
+            right: right.root,
         }));
         unsafe {
-            (*left).parent = root;
-            (*right).parent = root;
+            (*left.root).parent = root;
+            (*right.root).parent = root;
         }
+        std::mem::forget(left);
+        std::mem::forget(right);
         Self { root }
     }
 
