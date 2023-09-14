@@ -69,8 +69,12 @@ impl<T> Tree<T> {
             right: right.root,
         }));
         unsafe {
-            (*left.root).parent = root;
-            (*right.root).parent = root;
+            if !left.root.is_null() {
+                (*left.root).parent = root;
+            }
+            if !right.root.is_null() {
+                (*right.root).parent = root;
+            }
         }
         std::mem::forget(left);
         std::mem::forget(right);
@@ -127,7 +131,7 @@ mod tests {
         let tree = Tree::branch(
             5,
             Tree::leaf(3),
-            Tree::branch(8, Tree::leaf(7), Tree::leaf(9)),
+            Tree::branch(8, Tree::leaf(7), Tree::empty()),
         );
 
         let three: &i32 = tree.root().left().get().unwrap();
